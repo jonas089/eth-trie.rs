@@ -16,6 +16,9 @@ documentation = "https://docs.rs/eth_trie"
 alloy-primitives = { version = "0.8.0", features = ["getrandom", "rlp"] }
 alloy-rlp = { version = "0.3.8", features = ["derive"] }
 hashbrown = "0.14.0"
+tiny-keccak = { git = "https://github.com/sp1-patches/tiny-keccak", features = [
+    "keccak",
+] }
 keccak-hash = "0.10.0"
 log = "0.4.16"
 parking_lot = "0.12"

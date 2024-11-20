@@ -1,9 +1,9 @@
-pub mod nibbles;
-pub mod node;
-mod tests;
-
 mod db;
 mod errors;
+pub mod nibbles;
+pub mod node;
+pub mod precompile;
+mod tests;
 mod trie;
 
 pub use db::{MemoryDB, DB};

@@ -1,16 +1,15 @@
 use std::sync::{Arc, RwLock};
 use std::vec;
 
-use alloy_primitives::{Bytes, B256};
-use alloy_rlp::{Buf, BufMut, Encodable, Header, EMPTY_STRING_CODE};
-use hashbrown::{HashMap, HashSet};
-use keccak_hash::{keccak, KECCAK_NULL_RLP};
-
 use crate::db::{MemoryDB, DB};
 use crate::errors::TrieError;
 use crate::nibbles::Nibbles;
 use crate::node::{empty_children, BranchNode, Node};
-
+use crate::precompile::precompile;
+use alloy_primitives::{Bytes, B256};
+use alloy_rlp::{Buf, BufMut, Encodable, Header, EMPTY_STRING_CODE};
+use hashbrown::{HashMap, HashSet};
+use keccak_hash::KECCAK_NULL_RLP;
 pub type TrieResult<T> = Result<T, TrieError>;
 const HASHED_LENGTH: usize = 32;
 
@@ -468,7 +467,7 @@ where
     ) -> TrieResult<Option<Vec<u8>>> {
         let proof_db = Arc::new(MemoryDB::new(true));
         for node_encoded in proof.into_iter() {
-            let hash: B256 = keccak(&node_encoded).as_fixed_bytes().into();
+            let hash: B256 = precompile(&node_encoded).into();
 
             if root_hash.eq(&hash) || node_encoded.len() >= HASHED_LENGTH {
                 proof_db.insert(hash.as_slice(), node_encoded).unwrap();
@@ -661,6 +660,17 @@ where
                     borrow_branch.value = None;
                     return Ok((Node::Branch(branch.clone()), true));
                 }
+                use tiny_keccak::{Hasher, Keccak};
+
+                pub fn digest_keccak(bytes: &[u8]) -> [u8; 32] {
+                    let mut hasher = Keccak::v256();
+                    let mut output = [0u8; 32];
+
+                    hasher.update(bytes);
+                    hasher.finalize(&mut output);
+
+                    output
+                }
 
                 let index = partial.at(0);
                 let child = &borrow_branch.children[index];
@@ -844,7 +854,7 @@ where
         let root_hash = match self.write_node(&self.root.clone()) {
             EncodedNode::Hash(hash) => hash,
             EncodedNode::Inline(encoded) => {
-                let hash: B256 = keccak(&encoded).as_fixed_bytes().into();
+                let hash: B256 = precompile(&encoded).into();
                 self.cache.insert(hash, encoded);
                 hash
             }
@@ -901,7 +911,7 @@ where
         if data.len() < HASHED_LENGTH {
             EncodedNode::Inline(data)
         } else {
-            let hash: B256 = keccak(&data).as_fixed_bytes().into();
+            let hash: B256 = precompile(&data).into();
             self.cache.insert(hash, data);
 
             self.gen_keys.insert(hash);
